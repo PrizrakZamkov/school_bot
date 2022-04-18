@@ -5,6 +5,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text, Command
 from auth_data import token
+from db import create_connection, execute_query, execute_read_query
 
 import datetime
 
@@ -19,36 +20,67 @@ menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
 menu.add("Получить расписание")
 
 
+class Student(StatesGroup):
+    student_number = State()
+    student_word = State()
+
 @dp.message_handler(commands="start")
 async def callback_start(message: types.Message):
     await bot.send_message(message.chat.id,
-                           "Привет! Я sd_bot_1201. Я помогу тебе найти расписание.",
-                           reply_markup=menu)
-
-
-class Class(StatesGroup):
-    class_number = State()
-    class_word = State()
-    when = State()
-
-
-def get_class_timetable(new_class):
-    # result_timetable = data[new_class['number']][new_class['word']]
-    return "Типо расписание"
-
-
-@dp.message_handler(Text(equals="Получить расписание"))
-async def callback(message: types.Message):
-    await Class.class_number.set()
+                           "Привет! Я sd_bot_1201. Я помогу тебе найти расписание.")
+    await Student.student_number.set()
     await message.reply("Впишите номер класса:")
 
 
-@dp.message_handler(state=Class.class_number)
+def get_user(user_id):
+    select_users = "SELECT * from users"
+    users = execute_read_query(connection, select_users)
+
+    for user in users:
+        print(user)
+        if int(user[1]) == user_id:
+            return user
+    return None
+
+def create_user(user_id, data):
+    if not get_user(user_id):
+        print(f"create new user '{user_id}', '{data}'")
+        create_users = f"""
+            INSERT INTO
+              users (user_id, number, word)
+            VALUES
+              ({user_id}, {data["number"]}, '{data["word"]}');
+            """
+        execute_query(connection, create_users)
+    else:
+        update_description = f"""
+        UPDATE
+            users
+        SET
+          number = {data["number"]},
+          word = "{data["word"]}"
+        WHERE
+          user_id = {user_id}
+        """
+        execute_query(connection, update_description)
+
+
+def get_student_timetable(user_id, day):
+    try:
+        user_data = get_user(user_id)
+        print(user_data)
+        # result_timetable = data[user_data[2]+user_data[3].lower()][day]
+        return "Типо расписание"
+    except:
+        return "Ошибка..."
+
+
+@dp.message_handler(state=Student.student_number)
 async def load_name(message: types.Message, state: FSMContext):
     try:
-        async with state.proxy() as new_class:
-            new_class['number'] = int(message.text)
-        await Class.next()
+        async with state.proxy() as new_student:
+            new_student['number'] = int(message.text)
+        await Student.next()
         await message.reply('Введите литеру (букву) класса')
     except Exception:
         await message.reply('Введите только целое число')
@@ -63,41 +95,40 @@ menu_time_today = types.InlineKeyboardButton(
 menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today)
 
 
-@dp.message_handler(state=Class.class_word)
+@dp.message_handler(state=Student.student_word)
 async def load_name(message: types.Message, state: FSMContext):
-    async with state.proxy() as new_class:
-        new_class['word'] = message.text.lower()
-        await Class.next()
-        await bot.send_message(message.chat.id, 'Какое расписание вы хотите получить?', reply_markup=menu_time)
+    async with state.proxy() as new_student:
+        new_student['word'] = message.text.lower()
+        await Student.next()
+        await state.finish()
+        new_student = {
+            "number": new_student['number'],
+            "word": new_student['word']
+        }
+        create_user(message.from_user.id, new_student)
+        await bot.send_message(message.chat.id, 'Теперь вы можете смотреть свое расписание', reply_markup=menu)
 
 
-@dp.callback_query_handler(text_contains='time_', state=Class.when)
+@dp.message_handler(Text(equals="Получить расписание"))
+async def give_timetable(message: types.Message):
+    await message.reply('Выберете расписание, которое вам требуется', reply_markup=menu_time)
+
+@dp.callback_query_handler(text_contains='time_')
 async def callback(call: types.CallbackQuery, state: FSMContext):
-    try:
-        async with state.proxy() as new_class:
-            if call.data and call.data.startswith("time_"):
-                cl = call.data.split('_')[1]
-                await bot.send_message(call.from_user.id,
-                                       'Выбрано')
-                new_class['when'] = ['week', 'today'].index(cl)
-                await Class.next()
-                new_class = {
-                    "number": new_class['number'],
-                    "word": new_class['word'],
-                    "when": new_class['when'] == 1  # is today
-                }
-                await bot.send_message(call.from_user.id, get_class_timetable(new_class))
-                await state.finish()
-            else:
-                await bot.send_message(call.from_user.id, 'Какое расписание вы хотите получить?',
-                                       reply_markup=menu_time)
+    if call.data and call.data.startswith("time_"):
+        cl = call.data.split('_')[1]
+        is_today = ['week', 'today'].index(cl) == 1
+        if is_today:
+            day = datetime.datetime.today().weekday()
+            await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
+        else:
+            for day in range(1, 6):
+                await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
 
 
-
-    except Exception:
-        pass
 
 
 if __name__ == "__main__":
+    connection = create_connection("db.sqlite")
     data = get_data()
     executor.start_polling(dp)
