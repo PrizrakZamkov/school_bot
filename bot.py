@@ -132,7 +132,10 @@ menu_time_week = types.InlineKeyboardButton(
 menu_time_today = types.InlineKeyboardButton(
     text="На сегодня",
     callback_data="time_today")
-menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today)
+menu_time_tomorrow = types.InlineKeyboardButton(
+    text="На завтра",
+    callback_data="time_tomorrow")
+menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today, menu_time_tomorrow)
 
 
 @dp.message_handler(state=Student.student_word)
@@ -157,9 +160,14 @@ async def give_timetable(message: types.Message):
 async def callback(call: types.CallbackQuery, state: FSMContext):
     if call.data and call.data.startswith("time_"):
         cl = call.data.split('_')[1]
-        is_today = ['week', 'today'].index(cl) == 1
-        if is_today:
+        is_today = ['week', 'today', 'tomorrow'].index(cl)
+        if is_today == 2:
             day = datetime.datetime.today().weekday()
+            await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
+        elif is_today == 3:
+            day = datetime.datetime.today().weekday() + 1
+            if day > 4:
+                day = 0
             await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
         else:
             for day in range(5):
