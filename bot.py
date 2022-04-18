@@ -33,8 +33,9 @@ class Class(StatesGroup):
 
 
 def get_class_timetable(new_class):
-    result_timetable = data[new_class['number']][new_class['word']]
+    # result_timetable = data[new_class['number']][new_class['word']]
     return "Типо расписание"
+
 
 @dp.message_handler(Text(equals="Получить расписание"))
 async def callback(message: types.Message):
@@ -53,39 +54,48 @@ async def load_name(message: types.Message, state: FSMContext):
         await message.reply('Введите только целое число')
 
 
-menu_time = types.ReplyKeyboardMarkup(resize_keyboard=True)
-menu_time.row("На неделю", "На сегодня")
+menu_time_week = types.InlineKeyboardButton(
+    text="На неделю",
+    callback_data="time_week")
+menu_time_today = types.InlineKeyboardButton(
+    text="На сегодня",
+    callback_data="time_today")
+menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today)
+
 
 @dp.message_handler(state=Class.class_word)
 async def load_name(message: types.Message, state: FSMContext):
     async with state.proxy() as new_class:
         new_class['word'] = message.text.lower()
         await Class.next()
-        await message.reply('Какое расписание вы хотите получить?', reply_markup=menu_time)
-
-@dp.message_handler(state=Class.class_word)
-async def load_name(message: types.Message, state: FSMContext):
-    async with state.proxy() as new_class:
-        if message.text in ['На неделю', 'На сегодня']:
-            new_class['when'] = ['На неделю', 'На сегодня'].index(message.text)
-            await Class.next()
-            new_class = {
-                "number": new_class['number'],
-                "word": new_class['word'],
-                "when": new_class['when'] is 1
-            }
-            await message.reply(get_class_timetable(new_class))
-            await state.finish()
-        else:
-            await message.reply('Какое расписание вы хотите получить?', reply_markup=menu_time)
+        await bot.send_message(message.chat.id, 'Какое расписание вы хотите получить?', reply_markup=menu_time)
 
 
+@dp.callback_query_handler(text_contains='time_', state=Class.when)
+async def callback(call: types.CallbackQuery, state: FSMContext):
+    try:
+        async with state.proxy() as new_class:
+            if call.data and call.data.startswith("time_"):
+                cl = call.data.split('_')[1]
+                await bot.send_message(call.from_user.id,
+                                       'Выбрано')
+                new_class['when'] = ['week', 'today'].index(cl)
+                await Class.next()
+                new_class = {
+                    "number": new_class['number'],
+                    "word": new_class['word'],
+                    "when": new_class['when'] == 1  # is today
+                }
+                await bot.send_message(call.from_user.id, get_class_timetable(new_class))
+                await state.finish()
+            else:
+                await bot.send_message(call.from_user.id, 'Какое расписание вы хотите получить?',
+                                       reply_markup=menu_time)
 
 
 
-
-
-
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
