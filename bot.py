@@ -19,6 +19,45 @@ data = {}
 menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
 menu.add("Получить расписание")
 
+days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница']
+time_of_lesson = [
+    {
+        "start": "8:30",
+        "end": "9:15",
+    },
+    {
+        "start": "9:30",
+        "end": "10:15",
+    },
+    {
+        "start": "10:30",
+        "end": "11:15",
+    },
+    {
+        "start": "11:30",
+        "end": "12:15",
+    },
+    {
+        "start": "12:35",
+        "end": "13:20",
+    },
+    {
+        "start": "13:40",
+        "end": "14:25",
+    },
+    {
+        "start": "14:45",
+        "end": "15:30",
+    },
+    {
+        "start": "15:40",
+        "end": "16:25",
+    },
+    {
+        "start": "16:35",
+        "end": "17:20",
+    },
+]
 
 class Student(StatesGroup):
     student_number = State()
@@ -37,7 +76,6 @@ def get_user(user_id):
     users = execute_read_query(connection, select_users)
 
     for user in users:
-        print(user)
         if int(user[1]) == user_id:
             return user
     return None
@@ -58,7 +96,7 @@ def create_user(user_id, data):
             users
         SET
           number = {data["number"]},
-          word = "{data["word"]}"
+          word = "{data["word"]}"   
         WHERE
           user_id = {user_id}
         """
@@ -68,12 +106,14 @@ def create_user(user_id, data):
 def get_student_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
-        print(user_data)
-        # result_timetable = data[user_data[2]+user_data[3].lower()][day]
-        return "Типо расписание"
+        result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
+        result = f"{user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
+        for index, lesson in enumerate(result_timetable):
+            lesson = lesson[0].upper() + lesson[1:]
+            result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
+        return result
     except:
         return "Ошибка..."
-
 
 @dp.message_handler(state=Student.student_number)
 async def load_name(message: types.Message, state: FSMContext):
@@ -122,7 +162,7 @@ async def callback(call: types.CallbackQuery, state: FSMContext):
             day = datetime.datetime.today().weekday()
             await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
         else:
-            for day in range(1, 6):
+            for day in range(5):
                 await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
 
 
