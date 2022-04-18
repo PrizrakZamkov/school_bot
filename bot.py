@@ -161,10 +161,10 @@ async def callback(call: types.CallbackQuery, state: FSMContext):
     if call.data and call.data.startswith("time_"):
         cl = call.data.split('_')[1]
         is_today = ['week', 'today', 'tomorrow'].index(cl)
-        if is_today == 2:
+        if is_today == 1:
             day = datetime.datetime.today().weekday()
             await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
-        elif is_today == 3:
+        elif is_today == 2:
             day = datetime.datetime.today().weekday() + 1
             if day > 4:
                 day = 0
@@ -172,7 +172,6 @@ async def callback(call: types.CallbackQuery, state: FSMContext):
         else:
             for day in range(5):
                 await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
-
 
 
 
