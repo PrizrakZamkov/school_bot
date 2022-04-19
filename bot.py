@@ -148,6 +148,8 @@ async def cancel(message: types.Message, state: FSMContext):
     if curent_state is None:
         return
     await state.finish()
+    await bot.send_message(message.chat.id,
+                           "Опереция отменена")
 
 
 @dp.message_handler(state=Student.student_number)
