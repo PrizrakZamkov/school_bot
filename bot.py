@@ -74,7 +74,7 @@ async def start_input_class(message):
 @dp.message_handler(commands="start")
 async def callback_start(message: types.Message):
     await bot.send_message(message.chat.id,
-                           "Привет! Я sd_bot_1201. Я помогу тебе найти расписание.")
+                           "\U0001F64B Привет! Я sd_bot_1201. Я помогу тебе найти расписание.")
     await start_input_class(message)
 
 
@@ -132,7 +132,7 @@ def get_student_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
         result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
-        result = f"{user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
+        result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
         for index, lesson in enumerate(result_timetable):
             lesson = lesson[0].upper() + lesson[1:]
             result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
@@ -184,7 +184,7 @@ async def load_name(message: types.Message, state: FSMContext):
             "word": new_student['word']
         }
         create_user(message.from_user.id, new_student)
-        await bot.send_message(message.chat.id, 'Теперь вы можете смотреть свое расписание', reply_markup=menu)
+        await bot.send_message(message.chat.id, '\U00002705 Теперь вы можете смотреть свое расписание', reply_markup=menu)
 
 
 @dp.message_handler(Text(equals="Получить расписание"))
