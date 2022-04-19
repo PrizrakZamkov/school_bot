@@ -59,16 +59,40 @@ time_of_lesson = [
     },
 ]
 
+
 class Student(StatesGroup):
     student_number = State()
     student_word = State()
+
+
+async def start_input_class(message):
+    await Student.student_number.set()
+    await message.reply("Процесс регистрации... (впишите 'отмена') для отмены действия")
+    await message.reply("Впишите номер класса:")
+
 
 @dp.message_handler(commands="start")
 async def callback_start(message: types.Message):
     await bot.send_message(message.chat.id,
                            "Привет! Я sd_bot_1201. Я помогу тебе найти расписание.")
-    await Student.student_number.set()
-    await message.reply("Впишите номер класса:")
+    await start_input_class(message)
+
+
+@dp.message_handler(commands="relog")
+async def callback_relog(message: types.Message):
+    await start_input_class(message)
+
+
+@dp.message_handler(commands="menu")
+async def callback_menu(message: types.Message):
+    await bot.send_message(message.chat.id,
+                           "Меню открыто", reply_markup=menu)
+
+
+@dp.message_handler(commands="help")
+async def callback_help(message: types.Message):
+    await bot.send_message(message.chat.id,
+                           "Список команд\nЗарегистрироваться заново - /relog\nОткрыть меню - /menu\nОткрыть расписание - вписать 'Получить расписание'")
 
 
 def get_user(user_id):
@@ -79,6 +103,7 @@ def get_user(user_id):
         if int(user[1]) == user_id:
             return user
     return None
+
 
 def create_user(user_id, data):
     if not get_user(user_id):
@@ -113,7 +138,17 @@ def get_student_timetable(user_id, day):
             result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
         return result
     except:
-        return "Ошибка..."
+        return "Ошибка... Проверьте введенный класс (Пропишите /start и введите нужный класс)"
+
+
+@dp.message_handler(state="*", commands='отмена')
+@dp.message_handler(Text(equals='отмена', ignore_case=True), state="*")
+async def cancel(message: types.Message, state: FSMContext):
+    curent_state = await state.get_state()
+    if curent_state is None:
+        return
+    await state.finish()
+
 
 @dp.message_handler(state=Student.student_number)
 async def load_name(message: types.Message, state: FSMContext):
@@ -156,6 +191,7 @@ async def load_name(message: types.Message, state: FSMContext):
 async def give_timetable(message: types.Message):
     await message.reply('Выберете расписание, которое вам требуется', reply_markup=menu_time)
 
+
 @dp.callback_query_handler(text_contains='time_')
 async def callback(call: types.CallbackQuery, state: FSMContext):
     if call.data and call.data.startswith("time_"):
@@ -172,7 +208,6 @@ async def callback(call: types.CallbackQuery, state: FSMContext):
         else:
             for day in range(5):
                 await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
-
 
 
 if __name__ == "__main__":
