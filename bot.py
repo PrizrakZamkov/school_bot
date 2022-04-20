@@ -155,12 +155,22 @@ async def create_user(user_id, number=0, word="", is_teacher=False, teacher_last
 def get_student_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
-        result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
-        result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
-        for index, lesson in enumerate(result_timetable):
-            lesson = lesson[0].upper() + lesson[1:]
-            result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
-        return result
+        if not user_data[3]:
+            result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
+            result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
+            for index, lesson in enumerate(result_timetable):
+                lesson = lesson[0].upper() + lesson[1:]
+                result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
+            return result
+        else:
+            # другую таблицу
+            result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
+            result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
+            for index, lesson in enumerate(result_timetable):
+                lesson = lesson[0].upper() + lesson[1:]
+                result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
+            return result
+
     except:
         return "Ошибка... Проверьте введенный класс (Пропишите /relog и введите нужный класс)"
 
