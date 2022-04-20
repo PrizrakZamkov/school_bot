@@ -138,7 +138,7 @@ def get_user(user_id):
     return None
 
 
-async def create_user(user_id, number=0, word="", is_teacher=False, teacher_last_name=""):
+async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_name=""):
     if not get_user(user_id):
         print(f"create new user '{user_id}'")
         create_users = f"""
@@ -166,7 +166,8 @@ async def create_user(user_id, number=0, word="", is_teacher=False, teacher_last
 def get_student_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
-        if user_data[4] == 'True':
+        print(user_data)
+        if user_data[4] == 1:
             result_timetable = data_teachers[f"{user_data[5]}".lower()][day]
             result = f"\U0001F514 {days[day]}:\n\n"
             for index, lesson in enumerate(result_timetable):
@@ -242,7 +243,7 @@ async def load_name(message: types.Message, state: FSMContext):
         await Teacher.next()
         await state.finish()
         await create_user(message.from_user.id,
-                          is_teacher=True,
+                          is_teacher=1,
                           teacher_last_name=new_teacher["teacher_last_name"])
         await bot.send_message(message.chat.id,
                                '\U00002705 Теперь вы можете смотреть свое расписание',
