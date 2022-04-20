@@ -1,5 +1,6 @@
 from aiogram import Bot, types, Dispatcher, executor
-from school_bot.get_tgd import get_data
+from school_bot.get_tgd import get_data_students
+from school_bot.get_tgd_teachers import get_data_teachers
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -15,6 +16,7 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 data = {}
+data_teachers = {}
 
 menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
 menu.row("Помощь", "Получить расписание")
@@ -155,15 +157,13 @@ async def create_user(user_id, number=0, word="", is_teacher=False, teacher_last
 def get_student_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
-        if not user_data[3]:
-            result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
-            result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
+        if user_data[4] == 'True':
+            result_timetable = data_teachers[f"{user_data[5]}".lower()][day]
+            result = f"\U0001F514 {days[day]}:\n\n"
             for index, lesson in enumerate(result_timetable):
-                lesson = lesson[0].upper() + lesson[1:]
                 result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
             return result
         else:
-            # другую таблицу
             result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
             result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
             for index, lesson in enumerate(result_timetable):
@@ -171,7 +171,8 @@ def get_student_timetable(user_id, day):
                 result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
             return result
 
-    except:
+    except Exception as ex:
+        print(f"Exception '{ex}'")
         return "Ошибка... Проверьте введенный класс (Пропишите /relog и введите нужный класс)"
 
 
@@ -273,5 +274,6 @@ async def callback_time(call: types.CallbackQuery):
 
 if __name__ == "__main__":
     connection = create_connection("db.sqlite")
-    data = get_data()
+    data = get_data_students()
+    data_teachers = get_data_teachers()
     executor.start_polling(dp)
