@@ -117,7 +117,7 @@ async def callback_help(message: types.Message):
                            "Список команд\nЗарегистрироваться заново - /relog\nОткрыть меню - /menu\nОткрыть расписание - вписать 'Получить расписание'")
 
 
-async def get_user(user_id):
+def get_user(user_id):
     select_users = "SELECT * from users"
     users = execute_read_query(connection, select_users)
 
@@ -152,10 +152,9 @@ async def create_user(user_id, number=0, word="", is_teacher=False, teacher_last
         execute_query(connection, update_description)
 
 
-async def get_student_timetable(user_id, day):
+def get_student_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
-        print(user_data[1])
         result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
         result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
         for index, lesson in enumerate(result_timetable):
@@ -240,15 +239,15 @@ async def callback_time(call: types.CallbackQuery):
         is_today = ['week', 'today', 'tomorrow'].index(cl)
         if is_today == 1:
             day = datetime.datetime.today().weekday()
-            await bot.send_message(call.from_user.id, await get_student_timetable(call.from_user.id, day))
+            await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
         elif is_today == 2:
             day = datetime.datetime.today().weekday() + 1
             if day > 4:
                 day = 0
-            await bot.send_message(call.from_user.id, await get_student_timetable(call.from_user.id, day))
+            await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
         else:
             for day in range(5):
-                await bot.send_message(call.from_user.id, await get_student_timetable(call.from_user.id, day))
+                await bot.send_message(call.from_user.id, get_student_timetable(call.from_user.id, day))
 
 
 @dp.callback_query_handler(text_contains='person_')
