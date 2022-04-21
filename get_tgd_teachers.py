@@ -3,7 +3,6 @@ from openpyxl import load_workbook
 
 def get_data_teachers():
     book = load_workbook(filename="teachers.xlsx")
-
     sheet = book['teachers']  # название листа
     dict_t = {}
     index = 4
