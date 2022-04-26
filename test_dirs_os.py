@@ -11,6 +11,7 @@ def get_all_xlsx(dirname):
     for file in fullpaths:
         if os.path.isfile(file):
             print("file")
-            files.append(file.split("\\")[1])
+            name = file.split('\\')[1]
+            files.append(rf"{dirname}\{name}")
 
     return list(files)

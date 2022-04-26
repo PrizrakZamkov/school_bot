@@ -8,6 +8,7 @@ from school_bot.get_tgd import get_data_students
 from school_bot.get_tgd_teachers import get_data_teachers
 from school_bot.auth_data import token
 from school_bot.db import create_connection, execute_query, execute_read_query
+from photo_generator.generate_photo import get_photo
 
 
 bot = Bot(token=token, parse_mode=types.ParseMode.HTML)
@@ -163,7 +164,7 @@ async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_nam
         execute_query(connection, update_description)
 
 
-def get_student_timetable(user_id, day):
+async def get_student_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
         print(user_data)
@@ -179,6 +180,8 @@ def get_student_timetable(user_id, day):
             for index, lesson in enumerate(result_timetable):
                 lesson = lesson[0].upper() + lesson[1:]
                 result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
+            # photo = open(get_photo(result), 'rb')
+            # await bot.send_photo(user_id, photo)
             return result
 
     except Exception as ex:
@@ -268,17 +271,17 @@ async def callback_time(call: types.CallbackQuery):
         if is_today == 1:
             day = datetime.datetime.today().weekday()
             await bot.send_message(call.from_user.id,
-                                   get_student_timetable(call.from_user.id, day))
+                                   await get_student_timetable(call.from_user.id, day))
         elif is_today == 2:
             day = datetime.datetime.today().weekday() + 1
             if day > 4:
                 day = 0
             await bot.send_message(call.from_user.id,
-                                   get_student_timetable(call.from_user.id, day))
+                                   await get_student_timetable(call.from_user.id, day))
         else:
             for day in range(5):
                 await bot.send_message(call.from_user.id,
-                                       get_student_timetable(call.from_user.id, day))
+                                       await get_student_timetable(call.from_user.id, day))
 
 
 @dp.callback_query_handler(text_contains='person_')
