@@ -8,6 +8,8 @@ from school_bot.get_tgd import get_data_students
 from school_bot.get_tgd_teachers import get_data_teachers
 from school_bot.auth_data import token
 from school_bot.db import create_connection, execute_query, execute_read_query
+import os
+import shutil
 from photo_generator.generate_photo import get_photo
 
 
@@ -176,7 +178,7 @@ async def get_student_timetable(user_id, day):
             return result
         else:
             result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
-            result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}:\n\n"
+            result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}: \n\n"
             for index, lesson in enumerate(result_timetable):
                 lesson = lesson[0].upper() + lesson[1:]
                 result += f"{time_of_lesson[index]['start']} - {time_of_lesson[index]['end']}:    {lesson}\n"
@@ -297,6 +299,12 @@ async def callback_person(call: types.CallbackQuery):
 
 if __name__ == "__main__":
     connection = create_connection("db.sqlite")
+
+    # # only for photos, remake folder
+    # if os.path.exists('new_photos'):
+    #     shutil.rmtree('new_photos')
+    # os.mkdir('new_photos')
+
     data = get_data_students()
     data_teachers = get_data_teachers()
     executor.start_polling(dp)
