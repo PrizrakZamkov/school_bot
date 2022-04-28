@@ -1,13 +1,13 @@
 from PIL import Image, ImageDraw, ImageFont
 
 
-def get_photo(text=''):
+async def get_photo(text=''):
     try:
         text = text[2:]  # убираем эмодзи и пробел
         name = text.split(" ")[0]
         day = text.split(" ")[1][:-1]  # до :
         try:
-            Image.open(rf'timetable_photo_{name}_{day}.jpg')
+            Image.open(rf'new_photos\timetable_photo_{name}_{day}.jpg')
         except:
             image = Image.open("photo_generator\photo.jpg")
 
