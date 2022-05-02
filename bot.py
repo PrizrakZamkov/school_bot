@@ -11,7 +11,6 @@ from get_tgd import get_data_students
 from get_tgd_teachers import get_data_teachers
 from auth_data import token
 from db import create_connection, execute_query, execute_read_query
-from photo_generator.generate_photo import get_photo
 
 bot = Bot(token=token, parse_mode=types.ParseMode.HTML)
 
@@ -176,8 +175,6 @@ async def get_timetable(user_id, day):
                     time_of_lesson[index]['end'],
                     lesson
                 )
-            # photo = open(get_photo(result), 'rb')
-            # await bot.send_photo(user_id, photo)
             return result
 
     except Exception as ex:
@@ -371,11 +368,6 @@ async def callback_person(call: types.CallbackQuery):
 async def on_startup(_):
     global connection
     connection = create_connection("db.sqlite")
-
-    # # only for photos, remake folder
-    # if os.path.exists('new_photos'):
-    #     shutil.rmtree('new_photos')
-    # os.mkdir('new_photos')
 
     global data
     data = get_data_students()
