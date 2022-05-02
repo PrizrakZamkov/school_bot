@@ -65,58 +65,6 @@ time_of_lesson = [
 ]
 
 
-class Student(StatesGroup):
-    """
-        Номер и буква класса
-    """
-    student_number = State()
-    student_word = State()
-
-
-class Teacher(StatesGroup):
-    """
-        Фамилия учителя
-    """
-    teacher_last_name = State()
-
-
-teacher = types.InlineKeyboardButton(
-    text="Я учитель",
-    callback_data="person_teacher")
-student = types.InlineKeyboardButton(
-    text="Я ученик",
-    callback_data="person_student")
-menu_techer_student = types.InlineKeyboardMarkup().row(teacher, student)
-
-
-async def start_input_person(message):
-    """
-        Учитель / Ученик
-    """
-    await bot.send_message(message.chat.id, "Кем вы являетесь?",
-                           reply_markup=menu_techer_student)
-
-
-async def start_input_class(message):
-    """
-        Начало регистрации для ученика
-    """
-    await Student.student_number.set()
-    await bot.send_message(message.from_user.id,
-                           "Процесс регистрации... (впишите 'отмена') для отмены действия")
-    await bot.send_message(message.from_user.id, "Впишите номер класса:")
-
-
-async def start_input_last_name(message):
-    """
-        Начало регистрации для учителя
-    """
-    await Teacher.teacher_last_name.set()
-    await bot.send_message(message.from_user.id,
-                           "Процесс регистрации... (впишите 'отмена') для отмены действия")
-    await bot.send_message(message.from_user.id, "Впишите Вашу фамилию:")
-
-
 @dp.message_handler(commands="start")
 async def callback_start(message: types.Message):
     """
@@ -213,10 +161,10 @@ async def get_timetable(user_id, day):
             for index, lesson in enumerate(result_timetable):
                 letter = "{} - {}:    {}\n"
                 result += letter.format(
-                            time_of_lesson[index]['start'],
-                            time_of_lesson[index]['end'],
-                            lesson
-                        )
+                    time_of_lesson[index]['start'],
+                    time_of_lesson[index]['end'],
+                    lesson
+                )
             return result
         else:
             result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
@@ -224,10 +172,10 @@ async def get_timetable(user_id, day):
             for index, lesson in enumerate(result_timetable):
                 letter = "{} - {}:    {}\n"
                 result += letter.format(
-                            time_of_lesson[index]['start'],
-                            time_of_lesson[index]['end'],
-                            lesson
-                        )
+                    time_of_lesson[index]['start'],
+                    time_of_lesson[index]['end'],
+                    lesson
+                )
             # photo = open(get_photo(result), 'rb')
             # await bot.send_photo(user_id, photo)
             return result
@@ -236,6 +184,41 @@ async def get_timetable(user_id, day):
         print(f"Exception '{ex}'")
         return "Ошибка... Проверьте введенный класс" \
                " (Пропишите /relog и введите нужный класс)"
+
+
+menu_time_week = types.InlineKeyboardButton(
+    text="На неделю",
+    callback_data="time_week")
+menu_time_today = types.InlineKeyboardButton(
+    text="На сегодня",
+    callback_data="time_today")
+menu_time_tomorrow = types.InlineKeyboardButton(
+    text="На завтра",
+    callback_data="time_tomorrow")
+menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today, menu_time_tomorrow)
+
+teacher = types.InlineKeyboardButton(
+    text="Я учитель",
+    callback_data="person_teacher")
+student = types.InlineKeyboardButton(
+    text="Я ученик",
+    callback_data="person_student")
+menu_techer_student = types.InlineKeyboardMarkup().row(teacher, student)
+
+
+async def start_input_person(message):
+    """
+        Учитель / Ученик
+    """
+    await bot.send_message(message.chat.id, "Кем вы являетесь?",
+                           reply_markup=menu_techer_student)
+
+
+class Teacher(StatesGroup):
+    """
+        Фамилия учителя
+    """
+    teacher_last_name = State()
 
 
 @dp.message_handler(state="*", commands='отмена')
@@ -252,6 +235,51 @@ async def cancel(message: types.Message, state: FSMContext):
                            "Опереция отменена")
 
 
+async def start_input_last_name(message):
+    """
+        Начало регистрации для учителя
+    """
+    await Teacher.teacher_last_name.set()
+    await bot.send_message(message.from_user.id,
+                           "Процесс регистрации... (впишите 'отмена') для отмены действия")
+    await bot.send_message(message.from_user.id, "Впишите Вашу фамилию:")
+
+
+@dp.message_handler(state=Teacher.teacher_last_name)
+async def load_last_name(message: types.Message, state: FSMContext):
+    """
+        Фамилия учителя
+    """
+    async with state.proxy() as new_teacher:
+        new_teacher['teacher_last_name'] = message.text.lower()
+        await Teacher.next()
+        await state.finish()
+        await create_user(message.from_user.id,
+                          is_teacher=1,
+                          teacher_last_name=new_teacher["teacher_last_name"])
+        await bot.send_message(message.chat.id,
+                               '\U00002705 Теперь вы можете смотреть свое расписание',
+                               reply_markup=menu)
+
+
+class Student(StatesGroup):
+    """
+        Номер и буква класса
+    """
+    student_number = State()
+    student_word = State()
+
+
+async def start_input_class(message):
+    """
+        Начало регистрации для ученика
+    """
+    await Student.student_number.set()
+    await bot.send_message(message.from_user.id,
+                           "Процесс регистрации... (впишите 'отмена') для отмены действия")
+    await bot.send_message(message.from_user.id, "Впишите номер класса:")
+
+
 @dp.message_handler(state=Student.student_number)
 async def load_number(message: types.Message, state: FSMContext):
     """
@@ -264,18 +292,6 @@ async def load_number(message: types.Message, state: FSMContext):
         await message.reply('Введите литеру (букву) класса')
     except Exception:
         await message.reply('Введите только целое число')
-
-
-menu_time_week = types.InlineKeyboardButton(
-    text="На неделю",
-    callback_data="time_week")
-menu_time_today = types.InlineKeyboardButton(
-    text="На сегодня",
-    callback_data="time_today")
-menu_time_tomorrow = types.InlineKeyboardButton(
-    text="На завтра",
-    callback_data="time_tomorrow")
-menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today, menu_time_tomorrow)
 
 
 @dp.message_handler(state=Student.student_word)
@@ -293,23 +309,6 @@ async def load_word(message: types.Message, state: FSMContext):
         await bot.send_message(message.chat.id,
                                "\U00002705 Теперь вы можете смотреть свое расписание,"
                                " если вам понадобится помощь, введите /help или 'Помощь'",
-                               reply_markup=menu)
-
-
-@dp.message_handler(state=Teacher.teacher_last_name)
-async def load_last_name(message: types.Message, state: FSMContext):
-    """
-        Фамилия учителя
-    """
-    async with state.proxy() as new_teacher:
-        new_teacher['teacher_last_name'] = message.text.lower()
-        await Teacher.next()
-        await state.finish()
-        await create_user(message.from_user.id,
-                          is_teacher=1,
-                          teacher_last_name=new_teacher["teacher_last_name"])
-        await bot.send_message(message.chat.id,
-                               '\U00002705 Теперь вы можете смотреть свое расписание',
                                reply_markup=menu)
 
 
@@ -369,7 +368,8 @@ async def callback_person(call: types.CallbackQuery):
             await start_input_last_name(call)
 
 
-if __name__ == "__main__":
+async def on_startup(_):
+    global connection
     connection = create_connection("db.sqlite")
 
     # # only for photos, remake folder
@@ -377,6 +377,12 @@ if __name__ == "__main__":
     #     shutil.rmtree('new_photos')
     # os.mkdir('new_photos')
 
+    global data
     data = get_data_students()
+
+    global data_teachers
     data_teachers = get_data_teachers()
-    executor.start_polling(dp, skip_updates=True)
+
+
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
