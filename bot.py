@@ -1,15 +1,16 @@
+'''
+    Запуск бота
+'''
 import datetime
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text
 from aiogram import Bot, types, Dispatcher, executor
-from school_bot.get_tgd import get_data_students
-from school_bot.get_tgd_teachers import get_data_teachers
-from school_bot.auth_data import token
-from school_bot.db import create_connection, execute_query, execute_read_query
-import os
-import shutil
+from get_tgd import get_data_students
+from get_tgd_teachers import get_data_teachers
+from auth_data import token
+from db import create_connection, execute_query, execute_read_query
 from photo_generator.generate_photo import get_photo
 
 
@@ -66,11 +67,17 @@ time_of_lesson = [
 
 
 class Student(StatesGroup):
+    '''
+        Номер и буква класса
+    '''
     student_number = State()
     student_word = State()
 
 
 class Teacher(StatesGroup):
+    '''
+        Фамилия учителя
+    '''
     teacher_last_name = State()
 
 
@@ -84,10 +91,17 @@ menu_techer_student = types.InlineKeyboardMarkup().row(teacher, student)
 
 
 async def start_input_person(message):
-    await bot.send_message(message.chat.id, "Кем вы являетесь?", reply_markup=menu_techer_student)
+    '''
+        Учитель / Ученик
+    '''
+    await bot.send_message(message.chat.id, "Кем вы являетесь?",
+                           reply_markup=menu_techer_student)
 
 
 async def start_input_class(message):
+    '''
+        Начало регистрации для ученика
+    '''
     await Student.student_number.set()
     await bot.send_message(message.from_user.id,
                            "Процесс регистрации... (впишите 'отмена') для отмены действия")
@@ -95,6 +109,9 @@ async def start_input_class(message):
 
 
 async def start_input_last_name(message):
+    '''
+        Начало регистрации для учителя
+    '''
     await Teacher.teacher_last_name.set()
     await bot.send_message(message.from_user.id,
                            "Процесс регистрации... (впишите 'отмена') для отмены действия")
@@ -103,6 +120,9 @@ async def start_input_last_name(message):
 
 @dp.message_handler(commands="start")
 async def callback_start(message: types.Message):
+    '''
+        Первое сообщение
+    '''
     await bot.send_message(message.chat.id,
                            "\U0001F64B Привет!"
                            " Я бот, который поможет найти тебе твоё расписание.")
@@ -113,17 +133,26 @@ async def callback_start(message: types.Message):
 
 @dp.message_handler(commands="relog")
 async def callback_relog(message: types.Message):
+    '''
+        Заново начать регистрацию
+    '''
     await start_input_person(message)
 
 
 @dp.message_handler(commands="menu")
 async def callback_menu(message: types.Message):
+    '''
+        Открыть меню
+    '''
     await bot.send_message(message.chat.id,
                            "Меню открыто", reply_markup=menu)
 
 
 @dp.message_handler(commands="help")
 async def callback_help(message: types.Message):
+    '''
+        Туториал для пользователей
+    '''
     await bot.send_message(message.chat.id,
                            "Список команд\n"
                            "Зарегистрироваться заново - /relog\n"
@@ -132,6 +161,9 @@ async def callback_help(message: types.Message):
 
 
 def get_user(user_id):
+    '''
+        Пполучить пользователя из базы данных, либо None
+    '''
     select_users = "SELECT * from users"
     users = execute_read_query(connection, select_users)
 
@@ -142,6 +174,9 @@ def get_user(user_id):
 
 
 async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_name=""):
+    '''
+        Создать пользователя, либо обновить существующего
+    '''
     if not get_user(user_id):
         print(f"create new user '{user_id}'")
         create_users = f"""
@@ -166,7 +201,10 @@ async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_nam
         execute_query(connection, update_description)
 
 
-async def get_student_timetable(user_id, day):
+async def get_timetable(user_id, day):
+    '''
+        Получить расписание
+    '''
     try:
         user_data = get_user(user_id)
         print(user_data)
@@ -195,6 +233,9 @@ async def get_student_timetable(user_id, day):
 @dp.message_handler(state="*", commands='отмена')
 @dp.message_handler(Text(equals='отмена', ignore_case=True), state="*")
 async def cancel(message: types.Message, state: FSMContext):
+    '''
+        Отмена
+    '''
     curent_state = await state.get_state()
     if curent_state is None:
         return
@@ -227,7 +268,10 @@ menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today, me
 
 
 @dp.message_handler(state=Student.student_word)
-async def load_name(message: types.Message, state: FSMContext):
+async def load_word(message: types.Message, state: FSMContext):
+    '''
+        Буква класса
+    '''
     async with state.proxy() as new_student:
         new_student['word'] = message.text.lower()
         await Student.next()
@@ -242,7 +286,10 @@ async def load_name(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=Teacher.teacher_last_name)
-async def load_name(message: types.Message, state: FSMContext):
+async def load_last_name(message: types.Message, state: FSMContext):
+    '''
+        Фамилия учителя
+    '''
     async with state.proxy() as new_teacher:
         new_teacher['teacher_last_name'] = message.text.lower()
         await Teacher.next()
@@ -267,27 +314,35 @@ async def give_help(message: types.Message):
 
 @dp.callback_query_handler(text_contains='time_')
 async def callback_time(call: types.CallbackQuery):
+    '''
+        Расписание на
+        Неделю / сегодня / завтра
+    '''
     if call.data and call.data.startswith("time_"):
         callback_get_time = call.data.split('_')[1]
         is_today = ['week', 'today', 'tomorrow'].index(callback_get_time)
         if is_today == 1:
             day = datetime.datetime.today().weekday()
             await bot.send_message(call.from_user.id,
-                                   await get_student_timetable(call.from_user.id, day))
+                                   await get_timetable(call.from_user.id, day))
         elif is_today == 2:
             day = datetime.datetime.today().weekday() + 1
             if day > 4:
                 day = 0
             await bot.send_message(call.from_user.id,
-                                   await get_student_timetable(call.from_user.id, day))
+                                   await get_timetable(call.from_user.id, day))
         else:
             for day in range(5):
                 await bot.send_message(call.from_user.id,
-                                       await get_student_timetable(call.from_user.id, day))
+                                       await get_timetable(call.from_user.id, day))
 
 
 @dp.callback_query_handler(text_contains='person_')
 async def callback_person(call: types.CallbackQuery):
+    '''
+        Ученик / Учитель
+        (is_teacher: False / True)
+    '''
     if call.data and call.data.startswith("person_"):
         callback_get_person = call.data.split('_')[1]
         is_today = ['student', 'teacher'].index(callback_get_person)
@@ -307,4 +362,4 @@ if __name__ == "__main__":
 
     data = get_data_students()
     data_teachers = get_data_teachers()
-    executor.start_polling(dp)
+    executor.start_polling(dp, skip_updates=True)
