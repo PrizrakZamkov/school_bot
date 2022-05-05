@@ -365,12 +365,21 @@ async def callback_person(call: types.CallbackQuery):
             await start_input_last_name(call)
 
 
+
+@dp.message_handler(Text(equals="ЯАдмин"))
+async def give_help(message: types.Message):
+    """
+        Админ
+    """
+    await bot.send_message(message.from_user.id, "Нет, не админ")
+
+
 async def on_startup(_):
     global connection
     connection = create_connection("db.sqlite")
 
     global data
-    data = get_data_students()
+    data.update(get_data_students())
 
     global data_teachers
     data_teachers = get_data_teachers()
