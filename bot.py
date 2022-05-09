@@ -2,6 +2,8 @@
     Запуск бота
 '''
 import datetime
+import shutil
+
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -152,11 +154,11 @@ async def callback_menu(message: types.Message):
         Открыть меню
     """
     if get_user(message.from_user.id)['is_admin']:
-        await bot.send_message(message.chat.id,
-                           "Меню открыто", reply_markup=menu_admin)
+        current_menu = menu_admin
     else:
-        await bot.send_message(message.chat.id,
-                           "Меню открыто", reply_markup=menu_for_get_timetable)
+        current_menu = menu_for_get_timetable
+    await bot.send_message(message.chat.id,
+                           "Меню открыто", reply_markup=current_menu)
 
 async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_name="", is_admin=0):
     """
@@ -255,6 +257,12 @@ class Teacher(StatesGroup):
     """
     teacher_last_name = State()
 
+async def send_otmena_message(message: types.Message):
+    """
+        Начало операции... (впишите 'отмена') для отмены действия
+    """
+    await bot.send_message(message.from_user.id,
+                           "Начало операции... (впишите 'отмена') для отмены действия")
 
 @dp.message_handler(state="*", commands='отмена')
 @dp.message_handler(Text(equals='отмена', ignore_case=True), state="*")
@@ -275,8 +283,7 @@ async def start_input_last_name(message):
         Начало регистрации для учителя
     """
     await Teacher.teacher_last_name.set()
-    await bot.send_message(message.from_user.id,
-                           "Процесс регистрации... (впишите 'отмена') для отмены действия")
+    await send_otmena_message(message)
     await bot.send_message(message.from_user.id, "Впишите Вашу фамилию:")
 
 
@@ -292,9 +299,15 @@ async def load_last_name(message: types.Message, state: FSMContext):
         await create_user(message.from_user.id,
                           is_teacher=1,
                           teacher_last_name=new_teacher["teacher_last_name"])
+
+        if get_user(message.from_user.id)['is_admin']:
+            current_menu = menu_admin
+        else:
+            current_menu = menu_for_get_timetable
         await bot.send_message(message.chat.id,
-                               '\U00002705 Теперь вы можете смотреть свое расписание',
-                               reply_markup=menu_for_get_timetable)
+                                   '\U00002705 Теперь вы можете смотреть свое расписание',
+                                   reply_markup=current_menu)
+
 
 
 class Student(StatesGroup):
@@ -310,8 +323,7 @@ async def start_input_class(message):
         Начало регистрации для ученика
     """
     await Student.student_number.set()
-    await bot.send_message(message.from_user.id,
-                           "Процесс регистрации... (впишите 'отмена') для отмены действия")
+    await send_otmena_message(message)
     await bot.send_message(message.from_user.id, "Впишите номер класса:")
 
 
@@ -341,10 +353,15 @@ async def load_word(message: types.Message, state: FSMContext):
         await create_user(message.from_user.id,
                           number=new_student["number"],
                           word=new_student["word"])
+        if get_user(message.from_user.id)['is_admin']:
+            current_menu = menu_admin
+        else:
+            current_menu = menu_for_get_timetable
         await bot.send_message(message.chat.id,
-                               "\U00002705 Теперь вы можете смотреть свое расписание,"
-                               " если вам понадобится помощь, введите /help или 'Помощь'",
-                               reply_markup=menu_for_get_timetable)
+                                   "\U00002705 Теперь вы можете смотреть свое расписание,"
+                                   " если вам понадобится помощь, введите /help или 'Помощь'",
+                                   reply_markup=current_menu)
+
 
 
 @dp.message_handler(Text(equals="Получить расписание"))
@@ -415,11 +432,13 @@ async def start_add_admin(message):
         Начало ввода ID
     """
     await AddAdmin.admin_id.set()
-    await bot.send_message(message.from_user.id, "Впишите ID нового админа (узнать свой айди можно вписав 'ID') (впишите 'отмена', чтобы отменить действие)")
+    await send_otmena_message(message)
+    await bot.send_message(message.from_user.id, "Впишите ID нового админа (узнать свой айди можно вписав 'ID')")
+
 
 
 @dp.message_handler(state=AddAdmin.admin_id)
-async def load_last_name(message: types.Message, state: FSMContext):
+async def load_admin(message: types.Message, state: FSMContext):
     """
         ID админа
     """
@@ -442,12 +461,85 @@ async def load_last_name(message: types.Message, state: FSMContext):
             await bot.send_message(message.chat.id,
                                    'Введите только число')
 
+
+
+class UpdateTimetable(StatesGroup):
+    """
+        Обновление расписания
+    """
+    file = State()
+
+
+async def start_update_timetable(message):
+    """
+        Начало Обновления расписания
+    """
+    await UpdateTimetable.file.set()
+    await send_otmena_message(message)
+    await bot.send_message(message.from_user.id, "Отправьте файл с обновлениями расписания в правильном формате (впишите 'Формат', чтобы посмотреть формат пасписания)")
+
+
+@dp.message_handler(state=UpdateTimetable.file, content_types=types.ContentTypes.DOCUMENT)
+async def load_timetable_file(message: types.Message, state: FSMContext):
+    """
+        Файл с расписанием
+    """
+    async with state.proxy() as update_file:
+        try:
+            dir = 'update_timetable'
+            shutil.rmtree(dir)
+            print(data)
+            if document := message.document:
+                await document.download(
+                    destination_dir="update_timetable",
+                )
+            data.update(get_data_students("update_timetable/documents"))
+            print(data)
+            print(get_data_students("update_timetable/documents"))
+            await UpdateTimetable.next()
+            await state.finish()
+            await bot.send_message(message.chat.id,
+                                   'Расписание обновлено')
+        except Exception as ex:
+            print(ex)
+            await bot.send_message(message.chat.id,
+                                   'Ошибка')
+
+
+
+@dp.message_handler(Text(equals="Обновить расписание"))
+async def start_start_add_admin(message: types.Message):
+    """
+        Добавить админа
+    """
+    await start_update_timetable(message)
+
 @dp.message_handler(Text(equals="Добавить админа"))
 async def start_start_add_admin(message: types.Message):
     """
         Добавить админа
     """
     await start_add_admin(message)
+
+@dp.message_handler(Text(equals="Формат"))
+async def start_start_add_admin(message: types.Message):
+    """
+        Получить Формат расписания
+    """
+    await bot.send_message(message.chat.id,
+"""
+Формат расписаний\n
+
+=================\n
+
+Расписание в xlml файле\n
+
+Имя листа '1'\n
+
+1 строка: классы (Пример: '5А')\n
+
+2-46 строка: названия уроков (5 дней по девять строк)
+""")
 
 
 @dp.message_handler(Text(equals="ЯАдмин"))
@@ -470,7 +562,6 @@ async def give_help(message: types.Message):
 async def on_startup(_):
     global connection
     connection = create_connection("db.sqlite")
-
     global data
     data.update(get_data_students())
 

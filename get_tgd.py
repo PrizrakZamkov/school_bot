@@ -2,8 +2,8 @@ from openpyxl import load_workbook
 from test_dirs_os import get_all_xlsx
 
 
-def get_data_students():
-    tables_name = get_all_xlsx('student_timetables')
+def get_data_students(file_path='student_timetables'):
+    tables_name = get_all_xlsx(file_path)
     dict_s = {}
     for i in tables_name:
         book = load_workbook(i)
