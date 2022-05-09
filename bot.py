@@ -19,10 +19,17 @@ dp = Dispatcher(bot, storage=storage)
 
 data = {}
 data_teachers = {}
+connection = None
 
-menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
-menu.row("Помощь", "Получить расписание")
-
+user_params = [
+    'id',
+    'user_id',
+    'number',
+    'word',
+    'is_teacher',
+    'teacher_last_name',
+    'is_admin'
+]
 days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница']
 time_of_lesson = [
     {
@@ -63,6 +70,32 @@ time_of_lesson = [
     },
 ]
 
+menu_for_get_timetable = types.ReplyKeyboardMarkup(resize_keyboard=True)
+menu_for_get_timetable.row("Помощь", "Получить расписание")
+
+menu_time_week = types.InlineKeyboardButton(
+    text="На неделю",
+    callback_data="time_week")
+menu_time_today = types.InlineKeyboardButton(
+    text="На сегодня",
+    callback_data="time_today")
+menu_time_tomorrow = types.InlineKeyboardButton(
+    text="На завтра",
+    callback_data="time_tomorrow")
+menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today, menu_time_tomorrow)
+
+teacher = types.InlineKeyboardButton(
+    text="Я учитель",
+    callback_data="person_teacher")
+student = types.InlineKeyboardButton(
+    text="Я ученик",
+    callback_data="person_student")
+menu_techer_student = types.InlineKeyboardMarkup().row(teacher, student)
+
+
+menu_admin = types.ReplyKeyboardMarkup(resize_keyboard=True)
+menu_admin.row("Помощь", "Получить расписание")
+menu_admin.row("Добавить админа", "Обновить расписание")
 
 @dp.message_handler(commands="start")
 async def callback_start(message: types.Message):
@@ -84,14 +117,6 @@ async def callback_relog(message: types.Message):
     """
     await start_input_person(message)
 
-
-@dp.message_handler(commands="menu")
-async def callback_menu(message: types.Message):
-    """
-        Открыть меню
-    """
-    await bot.send_message(message.chat.id,
-                           "Меню открыто", reply_markup=menu)
 
 
 @dp.message_handler(commands="help")
@@ -115,11 +140,25 @@ def get_user(user_id):
 
     for user in users:
         if int(user[1]) == user_id:
-            return user
+            return_user = {}
+            for i in range(len(user)):
+                return_user[user_params[i]] = user[i]
+            return return_user
     return None
 
+@dp.message_handler(commands="menu")
+async def callback_menu(message: types.Message):
+    """
+        Открыть меню
+    """
+    if get_user(message.from_user.id)['is_admin']:
+        await bot.send_message(message.chat.id,
+                           "Меню открыто", reply_markup=menu_admin)
+    else:
+        await bot.send_message(message.chat.id,
+                           "Меню открыто", reply_markup=menu_for_get_timetable)
 
-async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_name=""):
+async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_name="", is_admin=0):
     """
         Создать пользователя, либо обновить существующего
     """
@@ -127,24 +166,41 @@ async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_nam
         print(f"create new user '{user_id}'")
         create_users = f"""
             INSERT INTO
-              users (user_id, number, word, is_teacher, teacher_last_name)
+              users (user_id, number, word, is_teacher, teacher_last_name, is_admin)
             VALUES
-              ({user_id}, {number}, '{word}', {is_teacher}, '{teacher_last_name}');
+              ({user_id}, {number}, '{word}', {int(is_teacher)}, '{teacher_last_name}', {int(is_admin)});
             """
         execute_query(connection, create_users)
     else:
-        update_description = f"""
-        UPDATE
-            users
-        SET
-          number = {number},
-          word = "{word}",
-          is_teacher = "{is_teacher}",
-          teacher_last_name = "{teacher_last_name}"
-        WHERE
-          user_id = {user_id}
-        """
-        execute_query(connection, update_description)
+        if get_user(user_id)['is_admin']:
+            update_description = f"""
+            UPDATE
+                users
+            SET
+              number = {number},
+              word = "{word}",
+              is_teacher = {int(is_teacher)},
+              teacher_last_name = "{teacher_last_name}",
+              is_admin = {1}
+            WHERE
+              user_id = {user_id}
+            """
+            execute_query(connection, update_description)
+        else:
+            update_description = f"""
+            UPDATE
+                users
+            SET
+              number = {number},
+              word = "{word}",
+              is_teacher = {int(is_teacher)},
+              teacher_last_name = "{teacher_last_name}",
+              is_admin = {int(is_admin)}
+            WHERE
+              user_id = {user_id}
+            """
+            execute_query(connection, update_description)
+
 
 
 async def get_timetable(user_id, day):
@@ -154,8 +210,8 @@ async def get_timetable(user_id, day):
     try:
         user_data = get_user(user_id)
         print(user_data)
-        if user_data[4] == 1:
-            result_timetable = data_teachers[f"{user_data[5]}".lower()][day]
+        if user_data['is_teacher'] == 1:
+            result_timetable = data_teachers[f"{user_data['teacher_last_name']}".lower()][day]
             result = f"\U0001F514 {days[day]}:\n\n"
             for index, lesson in enumerate(result_timetable):
                 letter = "{} - {}:    {}\n"
@@ -166,8 +222,8 @@ async def get_timetable(user_id, day):
                 )
             return result
         else:
-            result_timetable = data[f"{user_data[2]}{user_data[3]}".lower()][day]
-            result = f"\U0001F514 {user_data[2]}{user_data[3].upper()} {days[day]}: \n\n"
+            result_timetable = data[f"{user_data['number']}{user_data['word']}".lower()][day]
+            result = f"\U0001F514 {user_data['number']}{user_data['word'].upper()} {days[day]}: \n\n"
             for index, lesson in enumerate(result_timetable):
                 letter = "{} - {}:    {}\n"
                 result += letter.format(
@@ -183,24 +239,6 @@ async def get_timetable(user_id, day):
                " (Пропишите /relog и введите нужный класс)"
 
 
-menu_time_week = types.InlineKeyboardButton(
-    text="На неделю",
-    callback_data="time_week")
-menu_time_today = types.InlineKeyboardButton(
-    text="На сегодня",
-    callback_data="time_today")
-menu_time_tomorrow = types.InlineKeyboardButton(
-    text="На завтра",
-    callback_data="time_tomorrow")
-menu_time = types.InlineKeyboardMarkup().row(menu_time_week, menu_time_today, menu_time_tomorrow)
-
-teacher = types.InlineKeyboardButton(
-    text="Я учитель",
-    callback_data="person_teacher")
-student = types.InlineKeyboardButton(
-    text="Я ученик",
-    callback_data="person_student")
-menu_techer_student = types.InlineKeyboardMarkup().row(teacher, student)
 
 
 async def start_input_person(message):
@@ -256,7 +294,7 @@ async def load_last_name(message: types.Message, state: FSMContext):
                           teacher_last_name=new_teacher["teacher_last_name"])
         await bot.send_message(message.chat.id,
                                '\U00002705 Теперь вы можете смотреть свое расписание',
-                               reply_markup=menu)
+                               reply_markup=menu_for_get_timetable)
 
 
 class Student(StatesGroup):
@@ -306,7 +344,7 @@ async def load_word(message: types.Message, state: FSMContext):
         await bot.send_message(message.chat.id,
                                "\U00002705 Теперь вы можете смотреть свое расписание,"
                                " если вам понадобится помощь, введите /help или 'Помощь'",
-                               reply_markup=menu)
+                               reply_markup=menu_for_get_timetable)
 
 
 @dp.message_handler(Text(equals="Получить расписание"))
@@ -365,13 +403,68 @@ async def callback_person(call: types.CallbackQuery):
             await start_input_last_name(call)
 
 
+class AddAdmin(StatesGroup):
+    """
+        Добавление нового админа
+    """
+    admin_id = State()
+
+
+async def start_add_admin(message):
+    """
+        Начало ввода ID
+    """
+    await AddAdmin.admin_id.set()
+    await bot.send_message(message.from_user.id, "Впишите ID нового админа (узнать свой айди можно вписав 'ID') (впишите 'отмена', чтобы отменить действие)")
+
+
+@dp.message_handler(state=AddAdmin.admin_id)
+async def load_last_name(message: types.Message, state: FSMContext):
+    """
+        ID админа
+    """
+    async with state.proxy() as new_admin:
+        try:
+            new_admin_id = int(message.text)
+            try:
+                await bot.send_message(new_admin_id,
+                                   'Вас назначили админом бота расписаний Школы в Капотне')
+            except:
+                await bot.send_message(message.chat.id,
+                                       'Пользователя с таким ID не существет. Попробуйте снова')
+            else:
+                await AddAdmin.next()
+                await state.finish()
+                await create_user(message.from_user.id, is_admin=True)
+                await bot.send_message(message.chat.id,
+                                       '\U00002705 Админ добавлен, чтобы открыть новое меню, нужно будет ввести команду /menu')
+        except ValueError:
+            await bot.send_message(message.chat.id,
+                                   'Введите только число')
+
+@dp.message_handler(Text(equals="Добавить админа"))
+async def start_start_add_admin(message: types.Message):
+    """
+        Добавить админа
+    """
+    await start_add_admin(message)
+
 
 @dp.message_handler(Text(equals="ЯАдмин"))
 async def give_help(message: types.Message):
     """
         Админ
     """
-    await bot.send_message(message.from_user.id, "Нет, не админ")
+    await create_user(message.from_user.id, is_admin=True)
+    await bot.send_message(message.from_user.id, "Админ, так админ", reply_markup=menu_admin)
+
+
+@dp.message_handler(Text(equals="ID"))
+async def give_help(message: types.Message):
+    """
+        send id
+    """
+    await bot.send_message(message.from_user.id, str(message.from_user.id))
 
 
 async def on_startup(_):

@@ -53,9 +53,12 @@ execute_query(connection, update_post_description)
     create_users_table = """
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
-      age INTEGER,
-      gender TEXT
+          user_id TEXT NOT NULL,
+          number INTEGER,
+          word TEXT,
+          is_teacher INTEGER,
+          teacher_last_name TEXT,
+          is_admin INTEGER DEFAULT 0
     );
     """
 '''
