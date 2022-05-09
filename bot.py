@@ -11,10 +11,18 @@ from aiogram.dispatcher.filters import Text
 from aiogram import Bot, types, Dispatcher, executor
 from get_tgd import get_data_students
 from get_tgd_teachers import get_data_teachers
-from auth_data import token
 from db import create_connection, execute_query, execute_read_query
 
-bot = Bot(token=token, parse_mode=types.ParseMode.HTML)
+from dotenv import load_dotenv
+from pathlib import Path
+import os
+
+load_dotenv()
+env_path = Path('.')/'.env'
+load_dotenv(dotenv_path=env_path)
+TOKEN = os.getenv("TOKEN")
+
+bot = Bot(token=TOKEN, parse_mode=types.ParseMode.HTML)
 
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
