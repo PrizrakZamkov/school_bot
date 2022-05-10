@@ -21,6 +21,7 @@ load_dotenv()
 env_path = Path('.')/'.env'
 load_dotenv(dotenv_path=env_path)
 TOKEN = os.getenv("TOKEN")
+ADMIN_KEY = os.getenv("ADMIN_KEY")
 
 bot = Bot(token=TOKEN, parse_mode=types.ParseMode.HTML)
 
@@ -530,7 +531,7 @@ async def start_start_add_admin(message: types.Message):
     await start_add_admin(message)
 
 @dp.message_handler(Text(equals="Формат"))
-async def start_start_add_admin(message: types.Message):
+async def format(message: types.Message):
     """
         Получить Формат расписания
     """
@@ -549,18 +550,16 @@ async def start_start_add_admin(message: types.Message):
 2-46 строка: названия уроков (5 дней по девять строк)
 """)
 
-
-@dp.message_handler(Text(equals="ЯАдмин"))
-async def give_help(message: types.Message):
+@dp.message_handler(Text(equals=ADMIN_KEY))
+async def give_admin(message: types.Message):
     """
         Админ
     """
     await create_user(message.from_user.id, is_admin=True)
-    await bot.send_message(message.from_user.id, "Админ, так админ", reply_markup=menu_admin)
-
+    await bot.send_message(message.from_user.id, "Права администратора выданы", reply_markup=menu_admin)
 
 @dp.message_handler(Text(equals="ID"))
-async def give_help(message: types.Message):
+async def give_ID(message: types.Message):
     """
         send id
     """
