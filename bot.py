@@ -3,6 +3,7 @@
 '''
 import datetime
 import shutil
+import sys
 
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -16,6 +17,16 @@ from db import create_connection, execute_query, execute_read_query
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+from logging import getLogger, StreamHandler, Formatter, INFO
+import pandas as pd
+
+
+logger = getLogger(__name__)
+logger.setLevel(INFO)
+
+handler = StreamHandler(stream=sys.stdout)
+handler.setFormatter(Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
+logger.addHandler(handler)
 
 load_dotenv()
 env_path = Path('.')/'.env'
@@ -29,6 +40,7 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 data = {}
+
 data_teachers = {}
 connection = None
 
@@ -108,6 +120,20 @@ menu_admin = types.ReplyKeyboardMarkup(resize_keyboard=True)
 menu_admin.row("Помощь", "Получить расписание")
 menu_admin.row("Добавить админа", "Обновить расписание")
 
+async def saveData():
+    dir = 'student_timetables'
+    shutil.rmtree(dir)
+    os.mkdir(dir)
+    save_data = {}
+    for key in data:
+        save_data[key] = []
+        for item in data[key]:
+            save_data[key].extend(item)
+            save_data[key].extend(['']*(9-len(item)))
+    df = pd.DataFrame(save_data)
+    df.to_excel('./student_timetables/timetables.xlsx', sheet_name='1', index=False)
+    logger.info('Обновлено расписание')
+
 @dp.message_handler(commands="start")
 async def callback_start(message: types.Message):
     """
@@ -182,6 +208,11 @@ async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_nam
               ({user_id}, {number}, '{word}', {int(is_teacher)}, '{teacher_last_name}', {int(is_admin)});
             """
         execute_query(connection, create_users)
+
+        logger.info(f'Создан новый пользователь: user_id : {user_id},'
+                        f' Класс : {number},'
+                        f' Буква : {word}, is_teacher : {int(is_teacher)}, '
+                        f'Фамилия : "{teacher_last_name}", is_admin : {int(is_admin)}')
     else:
         if get_user(user_id)['is_admin']:
             update_description = f"""
@@ -211,6 +242,11 @@ async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_nam
               user_id = {user_id}
             """
             execute_query(connection, update_description)
+        logger.info(f'Обновление пользователя: user_id : {user_id},'
+                        f' Класс : {number},'
+                        f' Буква : {word}, is_teacher : {int(is_teacher)}, '
+                        f'Фамилия : "{teacher_last_name}", is_admin : {int(is_admin)}')
+
 
 
 
@@ -245,7 +281,7 @@ async def get_timetable(user_id, day):
             return result
 
     except Exception as ex:
-        print(f"Exception '{ex}'")
+        logger.exception(f'Ошибка при попытке получить расписания. Пользователь: {get_user(user_id)}, Оишбка: {ex}')
         return "Ошибка... Проверьте введенный класс" \
                " (Пропишите /relog и введите нужный класс)"
 
@@ -497,29 +533,28 @@ async def load_timetable_file(message: types.Message, state: FSMContext):
         try:
             dir = 'update_timetable'
             shutil.rmtree(dir)
-            print(data)
             if document := message.document:
                 await document.download(
                     destination_dir="update_timetable",
                 )
             data.update(get_data_students("update_timetable/documents"))
-            print(data)
-            print(get_data_students("update_timetable/documents"))
+            await saveData()
+
             await UpdateTimetable.next()
             await state.finish()
             await bot.send_message(message.chat.id,
                                    'Расписание обновлено')
         except Exception as ex:
-            print(ex)
+            logger.exception(ex)
             await bot.send_message(message.chat.id,
                                    'Ошибка')
 
 
 
 @dp.message_handler(Text(equals="Обновить расписание"))
-async def start_start_add_admin(message: types.Message):
+async def start_start_update_timetable(message: types.Message):
     """
-        Добавить админа
+        Обновить расписание
     """
     await start_update_timetable(message)
 
@@ -567,13 +602,21 @@ async def give_ID(message: types.Message):
 
 
 async def on_startup(_):
-    global connection
-    connection = create_connection("db.sqlite")
-    global data
-    data.update(get_data_students())
+    try:
+        global connection
+        connection = create_connection("db.sqlite")
 
-    global data_teachers
-    data_teachers = get_data_teachers()
+        global data
+        data.update(get_data_students())
+        await saveData()
+        global data_teachers
+        data_teachers = get_data_teachers()
+    except Exception as ex:
+        logger.exception(f'Ошибка при запуске бота: {ex}')
+        sys.exit()
+    else:
+        logger.info('Бот запущен исправно')
+
 
 
 if __name__ == "__main__":
