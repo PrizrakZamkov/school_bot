@@ -535,7 +535,7 @@ async def load_timetable_file(message: types.Message, state: FSMContext):
             shutil.rmtree(dir)
             if document := message.document:
                 await document.download(
-                    destination_dir="update_timetable",
+                    destination_dir=dir,
                 )
             data.update(get_data_students("update_timetable/documents"))
             await saveData()
