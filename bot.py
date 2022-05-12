@@ -200,7 +200,6 @@ async def create_user(user_id, number=0, word="", is_teacher=0, teacher_last_nam
         Создать пользователя, либо обновить существующего
     """
     if not get_user(user_id):
-        print(f"create new user '{user_id}'")
         create_users = f"""
             INSERT INTO
               users (user_id, number, word, is_teacher, teacher_last_name, is_admin)
@@ -256,7 +255,6 @@ async def get_timetable(user_id, day):
     """
     try:
         user_data = get_user(user_id)
-        print(user_data)
         if user_data['is_teacher'] == 1:
             result_timetable = data_teachers[f"{user_data['teacher_last_name']}".lower()][day]
             result = f"\U0001F514 {days[day]}:\n\n"
