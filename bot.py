@@ -20,6 +20,9 @@ import os
 from logging import getLogger, StreamHandler, Formatter, INFO
 import pandas as pd
 
+import platform
+system = platform.system()
+
 
 logger = getLogger(__name__)
 logger.setLevel(INFO)
@@ -131,7 +134,10 @@ async def saveData():
             save_data[key].extend(item)
             save_data[key].extend(['']*(9-len(item)))
     df = pd.DataFrame(save_data)
-    df.to_excel('./student_timetables/timetables.xlsx', sheet_name='1', index=False)
+    if system == 'Windows':
+        df.to_excel('./student_timetables/timetables.xlsx', sheet_name='1', index=False)
+    elif system == 'Linux':
+        df.to_excel(r'.\student_timetables\timetables.xlsx', sheet_name='1', index=False)
     logger.info('Обновлено расписание')
 
 @dp.message_handler(commands="start")
@@ -535,7 +541,11 @@ async def load_timetable_file(message: types.Message, state: FSMContext):
                 await document.download(
                     destination_dir=dir,
                 )
-            data.update(get_data_students("update_timetable/documents"))
+
+            if system == 'Windows':
+                data.update(get_data_students("update_timetable/documents"))
+            elif system == 'Linux':
+                data.update(get_data_students(r"update_timetable\documents"))
             await saveData()
 
             await UpdateTimetable.next()

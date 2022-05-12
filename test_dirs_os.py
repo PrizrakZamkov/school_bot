@@ -1,5 +1,7 @@
 import os
+import platform
 
+system = platform.system()
 
 def get_all_xlsx(dirname):
     dirfiles = os.listdir(dirname)
@@ -11,6 +13,10 @@ def get_all_xlsx(dirname):
     for file in fullpaths:
         if os.path.isfile(file):
             name = file.split('\\')[1]
-            files.append(rf"{dirname}\{name}")
+
+            if system == 'Windows':
+                files.append(rf"{dirname}\{name}")
+            elif system == 'Linux':
+                files.append(rf"{name}")
 
     return list(files)
