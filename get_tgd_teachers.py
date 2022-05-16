@@ -1,5 +1,5 @@
 from openpyxl import load_workbook
-from school_bot.test_dirs_os import get_all_xlsx
+from test_dirs_os import get_all_xlsx
 
 def get_data_teachers():
     dict_t = {}
