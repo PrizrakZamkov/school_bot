@@ -537,7 +537,7 @@ async def load_timetable_file(message: types.Message, state: FSMContext):
         try:
             dir = 'update_timetable'
             shutil.rmtree(dir)
-            if document := message.document:
+            if document == message.document:
                 await document.download(
                     destination_dir=dir,
                 )
