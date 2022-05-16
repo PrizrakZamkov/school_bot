@@ -12,11 +12,11 @@ def get_all_xlsx(dirname):
 
     for file in fullpaths:
         if os.path.isfile(file):
-            name = file.split('\\')[1]
-
             if system == 'Windows':
+                name = file.split('\\')[1]
                 files.append(rf"{dirname}\{name}")
             elif system == 'Linux':
+                name = file.split('\\')[0]
                 files.append(rf"{name}")
 
     return list(files)
