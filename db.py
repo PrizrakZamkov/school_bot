@@ -76,3 +76,6 @@ execute_query(connection, update_post_description)
 
     execute_query(connection, create_users)
 '''
+'''
+  ALTER TABLE users ADD COLUMN notification_time TEXT DEFAULT ""
+'''
