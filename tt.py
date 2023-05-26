@@ -31,6 +31,8 @@ from flask import Flask, render_template, request,flash, redirect, send_from_dir
 from werkzeug.utils import secure_filename
 import os
 
+
+
 nest_asyncio.apply()
 system = platform.system()
 
@@ -109,11 +111,16 @@ time_of_lesson = [
         "start": "15:55",
         "end": "16:40",
     },
+    # {
+    #     "start": "16:50",
+    #     "end": "17:30",
+    # },
     {
-        "start": "16:50",
-        "end": "17:30",
+        "start": "18:00",
+        "end": "19:00",
     },
 ]
+
 def make_time_with_delta(time: str, min_time_delta: int):
     # возвращает time - min_time_delta
     dt = datetime.strptime(time, '%H:%M')  # преобразуем строку в объект datetime
@@ -654,6 +661,8 @@ async def format(message: types.Message):
 
 Расписание в xlml файле\n
 
+Имя листа '1'\n
+
 1 строка: классы (Пример: '5А')\n
 
 2-46 строка: названия уроков (5 дней по девять строк)
@@ -674,33 +683,8 @@ async def give_ID(message: types.Message):
     """
     await bot.send_message(message.from_user.id, str(message.from_user.id))
 
-
-class Notification(StatesGroup):
-    """
-        Настройка напоминаний
-    """
-    time = State()
-
-   
-
-@dp.message_handler(Text(equals="Настроить напоминания"))
-async def start_set_notification_time(message: types.Message):
-    """
-        Запуск настройки напоминаний
-    """
-    await start_writing_notification_time(message)
- 
-async def start_writing_notification_time(message):
-    """
-        Начало ввода времени
-    """
-    await Notification.time.set()
     
-    await bot.send_message(message.from_user.id, f"Нажав на кнопку ниже, вы можете включить/выключить уведомления за {time_delta} минут(ы) до урока", reply_markup=menu_lesson_notifications_button)
-    await send_otmena_message(message)
-    await bot.send_message(message.from_user.id, f"Впишите время в формате ЧЧ:ММ или ЧЧ.ММ, в которое вы хотели бы получать расписание (доступно время с {interval_start} до {interval_end})\n\nЕсли вы хотите отключить уведомления, используйте команду /disable")
-
-@dp.callback_query_handler(state="*", text_contains='lesson_notification')
+@dp.callback_query_handler(text_contains='lesson_notification')
 async def callback_notification(call: types.CallbackQuery):
     """
         Вкл/Выкл напоминания перед уроками
@@ -712,6 +696,31 @@ async def callback_notification(call: types.CallbackQuery):
     else:
         await bot.send_message(call.from_user.id, "\U0000274C Напоминания перед уроком отключены")
     
+
+
+class Notification(StatesGroup):
+    """
+        Настройка напоминаний
+    """
+    time = State()
+
+@dp.message_handler(Text(equals="Настроить напоминания"))
+async def start_set_notification_time(message: types.Message):
+    """
+        Запуск настройки напоминаний
+    """
+    await start_writing_notification_time(message)
+
+async def start_writing_notification_time(message):
+    """
+        Начало ввода времени
+    """
+    await Notification.time.set()
+    
+    await bot.send_message(message.from_user.id, f"Нажав на кнопку ниже, вы можете включить/выключить уведомления за {time_delta} минут(ы) до урока", reply_markup=menu_lesson_notifications_button)
+    await send_otmena_message(message)
+    await bot.send_message(message.from_user.id, f"Впишите время в формате ЧЧ:ММ или ЧЧ.ММ, в которое вы хотели бы получать расписание (доступно время с {interval_start} до {interval_end})\n\nЕсли вы хотите отключить уведомления, используйте команду /disable")
+
 def is_time_correct_string(input_string, interval_start, interval_end):
     input_string = input_string.replace('.',':')
     parts = input_string.split(':')
@@ -792,7 +801,7 @@ async def callback_menu(message: types.Message):
     """
     await disable_notifications(message.chat.id)
     await bot.send_message(message.chat.id,
-                           "Утренние напоминания отключены")
+                           "Напоминания отключены")
     
 def get_notification_before_lesson_state(user_id):
     global connection
@@ -1017,3 +1026,4 @@ async def on_startup(_):
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
+'update_timetable'
