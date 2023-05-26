@@ -7,7 +7,7 @@ def get_data_students(file_path='student_timetables'):
     dict_s = {}
     for i in tables_name:
         book = load_workbook(i)
-        sheet = book['1']
+        sheet = book[book.active.title]
         index = 1
         next_sheet_cell = sheet.cell(row=1, column=index).value
         while next_sheet_cell != None:

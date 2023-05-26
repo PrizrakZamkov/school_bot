@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Upload Example</title>
+</head>
+<style>
+    body{
+        font-family: Arial, Helvetica, sans-serif;
+    }
+    button{
+        padding: 5px 10px;
+        border: 1px solid gray;
+        border-radius: 15px;
+    }
+</style>
+<body style="width: 70%; margin: auto;">
+    <h1>Окно загрузки расписаний</h1>
+    <div>
+        <form action="/" method="POST" enctype="multipart/form-data">
+            <label style="text-align: center; border: 2px dashed black; padding: 50px 0; display: block;">
+                <input type="file" name="file">
+            </label>
+            <br>
+            <button type="submit">Загрузить на сервер</button>
+        </form>
+    </div>
+
+    <br>
+    <div>
+        <h2>Формат расписаний:</h2>
+        <ol>
+            <li>Расписание в .xlsx файле</li>
+
+            <li>1 строка: классы (Пример: '5А') или фимилии учителей</li>
+
+            <li>2-46 строка: названия уроков (5 дней по девять строк)</li>
+        </ol>
+    </div>
+    <br>
+    <hr>
+    <br>
+	<a href="/download">Скачать текущую таблицу</a>
+	<p>(только ученики + учителя, которых записывали в формате как у учеников)</p>
+</body>
+</html>
